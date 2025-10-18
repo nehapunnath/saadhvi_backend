@@ -1,18 +1,18 @@
-// functions/src/Controllers/ProductController.js
 const ProductModel = require('../Models/ProductModel');
+const { admin } = require('../Config/firebaseAdmin');
 
 class ProductController {
   static async addProduct(req, res) {
     try {
       let productData = req.body;
-      const imageFiles = req.files; // ARRAY of files
+      const imageFiles = req.files; 
 
-      // Parse occasions
+      
       if (productData.occasion) {
         productData.occasion = JSON.parse(productData.occasion);
       }
 
-      console.log('🔐 ADD PRODUCT -', imageFiles?.length || 0, 'images');
+      console.log(' ADD PRODUCT -', imageFiles?.length || 0, 'images');
 
       const result = await ProductModel.addProduct(productData, imageFiles);
       
@@ -26,7 +26,7 @@ class ProductController {
         res.status(400).json({ success: false, error: result.error });
       }
     } catch (error) {
-      console.error('💥 Controller Error:', error);
+      console.error(' Controller Error:', error);
       res.status(500).json({ success: false, error: 'Server error' });
     }
   }
@@ -94,20 +94,22 @@ class ProductController {
       res.status(500).json({ success: false, error: 'Server error' });
     }
   }
-  // 🔥 UPDATE STOCK ONLY
 static async updateStock(req, res) {
   try {
     const { id } = req.params;
     const { stock } = req.body;
     
-    const result = await ProductModel.updateProduct(id, { stock });
+    const stockValue = parseInt(stock);
     
-    if (result.success) {
-      res.json({ success: true, message: 'Stock updated!' });
-    } else {
-      res.status(400).json({ success: false, error: result.error });
-    }
+    await admin.database().ref(`products/${id}`).update({
+      stock: stockValue,
+      updatedAt: admin.database.ServerValue.TIMESTAMP
+    });
+    
+    console.log(' Stock updated for:', id, 'to:', stockValue);
+    res.json({ success: true, message: 'Stock updated!' });
   } catch (error) {
+    console.error(' Stock Update Error:', error);
     res.status(500).json({ success: false, error: 'Server error' });
   }
 }

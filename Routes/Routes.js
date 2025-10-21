@@ -30,6 +30,9 @@ router.put('/admin/products/:id', verifyAdmin, upload.array('images', 5), Produc
 router.patch('/admin/products/:id', verifyAdmin, ProductController.updateStock);
 router.delete('/admin/products/:id', verifyAdmin, ProductController.deleteProduct);
 
+router.get('/products', ProductController.getPublicProducts);
+router.get('/products/:id', ProductController.getPublicProduct);
+
 // DASHBOARD
 router.get('/admin/dashboard', verifyAdmin, (req, res) => {
   res.json({ 

@@ -113,6 +113,84 @@ static async updateStock(req, res) {
     res.status(500).json({ success: false, error: 'Server error' });
   }
 }
+// Add these methods to your existing ProductController class
+
+static async getPublicProducts(req, res) {
+  try {
+    const result = await ProductModel.getProducts();
+    if (result.success) {
+      // Return only necessary fields for public viewing
+      const publicProducts = result.products.map(product => ({
+        id: product.id,
+        name: product.name,
+        description: product.description,
+        category: product.category,
+        price: product.price,
+        originalPrice: product.originalPrice,
+        stock: product.stock,
+        badge: product.badge,
+        material: product.material,
+        length: product.length,
+        weave: product.weave,
+        care: product.care,
+        weight: product.weight,
+        border: product.border,
+        origin: product.origin,
+        sizeGuide: product.sizeGuide,
+        extraCharges: product.extraCharges,
+        occasion: product.occasion,
+        images: product.images,
+        createdAt: product.createdAt
+      }));
+      
+      res.json({ success: true, products: publicProducts });
+    } else {
+      res.status(400).json({ success: false, error: result.error });
+    }
+  } catch (error) {
+    console.error('Public Get Products Error:', error);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+}
+
+static async getPublicProduct(req, res) {
+  try {
+    const { id } = req.params;
+    const result = await ProductModel.getProduct(id);
+    if (result.success) {
+      // Return only necessary fields for public viewing
+      const publicProduct = {
+        id: result.product.id,
+        name: result.product.name,
+        description: result.product.description,
+        category: result.product.category,
+        price: result.product.price,
+        originalPrice: result.product.originalPrice,
+        stock: result.product.stock,
+        badge: result.product.badge,
+        material: result.product.material,
+        length: result.product.length,
+        weave: result.product.weave,
+        care: result.product.care,
+        weight: result.product.weight,
+        border: result.product.border,
+        origin: result.product.origin,
+        sizeGuide: result.product.sizeGuide,
+        extraCharges: result.product.extraCharges,
+        occasion: result.product.occasion,
+        images: result.product.images,
+        createdAt: result.product.createdAt
+      };
+      
+      res.json({ success: true, product: publicProduct });
+    } else {
+      res.status(404).json({ success: false, error: result.error });
+    }
+  } catch (error) {
+    console.error('Public Get Product Error:', error);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+}
 }
 
 module.exports = ProductController;

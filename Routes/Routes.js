@@ -13,14 +13,17 @@ router.post('/set-admin', async (req, res) => {
   try {
     const user = await admin.auth().getUserByEmail(email);
     await admin.auth().setCustomUserClaims(user.uid, { admin: true });
+    console.log(`Admin claim set for ${email} (UID: ${user.uid})`);
     res.json({ success: true, message: `Admin set for ${email}` });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    console.error('Set Admin Error:', error.message);
+    res.status(400).json({ success: false, error: error.message });
   }
 });
 
 // AUTH
-router.post('/login', AuthController.loginAdmin);
+router.post('/login', AuthController.login);
+router.post('/user/register', AuthController.registerUser);
 
 // PRODUCTS
 router.post('/admin/products', verifyAdmin, upload.array('images', 5), ProductController.addProduct);

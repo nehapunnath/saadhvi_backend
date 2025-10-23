@@ -1,6 +1,8 @@
 const ProductModel = require('../Models/ProductModel');
 const { admin } = require('../Config/firebaseAdmin');
 
+const db = admin.database();
+
 class ProductController {
   static async addProduct(req, res) {
     try {
@@ -191,6 +193,197 @@ static async getPublicProduct(req, res) {
     res.status(500).json({ success: false, error: 'Server error' });
   }
 }
+static async getWishlist(req, res) {
+    try {
+      const userId = req.user.uid; // From verifyToken middleware
+      const snapshot = await admin.database().ref(`wishlist/${userId}`).once('value');
+      const items = [];
+      snapshot.forEach(child => {
+        items.push({ id: child.key, ...child.val() });
+      });
+      res.json({ success: true, items });
+    } catch (error) {
+      console.error(' Get Wishlist Error:', error);
+      res.status(500).json({ success: false, error: 'Server error' });
+    }
+  }
+
+  static async addToWishlist(req, res) {
+    try {
+      const userId = req.user.uid;
+      const item = req.body;
+      await admin.database().ref(`wishlist/${userId}/${item.id}`).set({
+        name: item.name,
+        price: item.price,
+        image: item.image,
+        addedAt: admin.database.ServerValue.TIMESTAMP
+      });
+      res.json({ success: true, message: 'Added to wishlist' });
+    } catch (error) {
+      console.error(' Add Wishlist Error:', error);
+      res.status(500).json({ success: false, error: 'Server error' });
+    }
+  }
+
+  static async removeFromWishlist(req, res) {
+    try {
+      const userId = req.user.uid;
+      const { id } = req.params;
+      await admin.database().ref(`wishlist/${userId}/${id}`).remove();
+      res.json({ success: true, message: 'Removed from wishlist' });
+    } catch (error) {
+      console.error(' Remove Wishlist Error:', error);
+      res.status(500).json({ success: false, error: 'Server error' });
+    }
+  }
+ static async getCart(req, res) {
+    try {
+      const userId = req.user.uid;
+      const cartRef = db.ref(`cart/${userId}`);
+      const snapshot = await cartRef.once("value");
+      const cartData = snapshot.val();
+
+      if (!cartData) {
+        return res.status(200).json({
+          success: true,
+          items: [],
+          message: "Cart is empty",
+        });
+      }
+
+      const items = Object.keys(cartData).map((key) => ({
+        id: key,
+        ...cartData[key],
+      }));
+
+      return res.status(200).json({
+        success: true,
+        items,
+        message: "Cart retrieved successfully",
+      });
+    } catch (error) {
+      console.error("Error fetching cart:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to fetch cart: " + error.message,
+      });
+    }
+  }
+
+  // 🔥 Add a product to the cart
+ static async addToCart(req, res) {
+    try {
+      const userId = req.user.uid;
+      const { id, name, price, image, quantity } = req.body;
+
+      if (!id || !name || !price || !image || !quantity) {
+        return res.status(400).json({
+          success: false,
+          message: "Missing required fields: id, name, price, image, quantity",
+        });
+      }
+
+      const cartRef = db.ref(`cart/${userId}/${id}`);
+      const snapshot = await cartRef.once("value");
+
+      if (snapshot.exists()) {
+        // Item already in cart, update quantity
+        const currentItem = snapshot.val();
+        await cartRef.update({
+          quantity: currentItem.quantity + quantity,
+        });
+      } else {
+        // Add new item to cart
+        await cartRef.set({
+          name,
+          price,
+          image,
+          quantity,
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Added to cart successfully",
+      });
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to add to cart: " + error.message,
+      });
+    }
+  }
+
+  // 🔥 Update cart item quantity
+  static async updateCartQuantity(req, res) {
+    try {
+      const userId = req.user.uid;
+      const { id } = req.params;
+      const { quantity } = req.body;
+
+      if (!quantity || quantity < 1) {
+        return res.status(400).json({
+          success: false,
+          message: "Quantity must be at least 1",
+        });
+      }
+
+      const cartRef = db.ref(`cart/${userId}/${id}`);
+      const snapshot = await cartRef.once("value");
+
+      if (!snapshot.exists()) {
+        return res.status(404).json({
+          success: false,
+          message: "Item not found in cart",
+        });
+      }
+
+      await cartRef.update({ quantity });
+
+      return res.status(200).json({
+        success: true,
+        message: "Cart quantity updated successfully",
+      });
+    } catch (error) {
+      console.error("Error updating cart quantity:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to update cart quantity: " + error.message,
+      });
+    }
+  }
+
+  // 🔥 Remove a product from the cart
+ static async removeFromCart(req, res) {
+    try {
+      const userId = req.user.uid;
+      const { id } = req.params;
+
+      const cartRef = db.ref(`cart/${userId}/${id}`);
+      const snapshot = await cartRef.once("value");
+
+      if (!snapshot.exists()) {
+        return res.status(404).json({
+          success: false,
+          message: "Item not found in cart",
+        });
+      }
+
+      await cartRef.remove();
+
+      return res.status(200).json({
+        success: true,
+        message: "Removed from cart successfully",
+      });
+    } catch (error) {
+      console.error("Error removing from cart:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to remove from cart: " + error.message,
+      });
+    }
+  }
 }
 
 module.exports = ProductController;

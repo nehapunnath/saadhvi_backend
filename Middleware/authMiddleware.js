@@ -25,6 +25,27 @@ const verifyAdmin = async (req, res, next) => {
   } catch (error) {
     res.status(500).json({ success: false, error: 'Auth error' });
   }
+  
+};
+const verifyUser = async (req, res, next) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({ success: false, error: 'No token provided' });
+    }
+
+    const result = await AuthModel.verifyToken(token);
+    
+    if (!result.success) {
+      return res.status(401).json({ success: false, error: 'Invalid token' });
+    }
+
+    req.user = result.decodedToken;
+    next();
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Auth error' });
+  }
 };
 
-module.exports = verifyAdmin;
+module.exports = { verifyAdmin, verifyUser }

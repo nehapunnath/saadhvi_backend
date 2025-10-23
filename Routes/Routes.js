@@ -3,7 +3,7 @@ const express = require('express');
 const router = express.Router();
 const AuthController = require('../Controller/AuthController');
 const ProductController = require('../Controller/ProductController');
-const verifyAdmin = require('../Middleware/authMiddleware');
+const { verifyAdmin, verifyUser } = require('../Middleware/authMiddleware');
 const upload = require('../Middleware/MulterMiddleware');
 const { admin } = require('../Config/firebaseAdmin');
 
@@ -35,6 +35,16 @@ router.delete('/admin/products/:id', verifyAdmin, ProductController.deleteProduc
 
 router.get('/products', ProductController.getPublicProducts);
 router.get('/products/:id', ProductController.getPublicProduct);
+
+router.get('/wishlist', verifyUser, ProductController.getWishlist); 
+router.post('/wishlist', verifyUser, ProductController.addToWishlist); 
+router.delete('/wishlist/:id', verifyUser, ProductController.removeFromWishlist); 
+
+router.get('/cart', verifyUser, ProductController.getCart);
+router.post('/cart/add', verifyUser, ProductController.addToCart);
+router.delete('/cart/remove/:id', verifyUser, ProductController.removeFromCart);
+router.put('/cart/update/:id', verifyUser, ProductController.updateCartQuantity);
+
 
 // DASHBOARD
 router.get('/admin/dashboard', verifyAdmin, (req, res) => {

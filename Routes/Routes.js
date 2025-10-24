@@ -41,9 +41,9 @@ router.post('/wishlist', verifyUser, ProductController.addToWishlist);
 router.delete('/wishlist/:id', verifyUser, ProductController.removeFromWishlist); 
 
 router.get('/cart', verifyUser, ProductController.getCart);
-router.post('/cart/add', verifyUser, ProductController.addToCart);
-router.delete('/cart/remove/:id', verifyUser, ProductController.removeFromCart);
-router.put('/cart/update/:id', verifyUser, ProductController.updateCartQuantity);
+router.post('/cart', verifyUser, ProductController.addToCart);
+router.put('/cart/:id', verifyUser, ProductController.updateCartItem);
+router.delete('/cart/:id', verifyUser, ProductController.removeFromCart);
 
 
 // DASHBOARD

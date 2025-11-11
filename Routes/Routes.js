@@ -6,6 +6,7 @@ const ProductController = require('../Controller/ProductController');
 const { verifyAdmin, verifyUser } = require('../Middleware/authMiddleware');
 const upload = require('../Middleware/MulterMiddleware');
 const { admin } = require('../Config/firebaseAdmin');
+const OrderController = require('../Controller/OrderController');
 
 // TEMP: Set admin claim
 router.post('/set-admin', async (req, res) => {
@@ -44,6 +45,12 @@ router.get('/cart', verifyUser, ProductController.getCart);
 router.post('/cart', verifyUser, ProductController.addToCart);
 router.put('/cart/:id', verifyUser, ProductController.updateCartItem);
 router.delete('/cart/:id', verifyUser, ProductController.removeFromCart);
+
+router.post('/checkout', verifyUser, OrderController.checkout);
+router.get('/admin/orders/:orderId', verifyAdmin, OrderController.getOrderById);
+router.get('/admin/orders', verifyAdmin, OrderController.getAllOrders);
+router.put('/admin/orders/:orderId', verifyAdmin, OrderController.updateOrder);
+router.delete('/admin/orders/:orderId', verifyAdmin, OrderController.deleteOrder);
 
 
 // DASHBOARD

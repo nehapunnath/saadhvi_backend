@@ -260,41 +260,34 @@ static async addToCart(req, res) {
       return res.status(400).json({ success: false, error: 'Missing required fields' });
     }
 
-    // Check if product exists and has sufficient stock
+    const qty = parseInt(quantity);
+    if (qty < 1) {
+      return res.status(400).json({ success: false, error: 'Quantity must be at least 1' });
+    }
+
+    // Check product exists and has enough stock
     const productSnapshot = await admin.database().ref(`products/${id}`).once('value');
     const product = productSnapshot.val();
     if (!product) {
       return res.status(404).json({ success: false, error: 'Product not found' });
     }
-    if (product.stock < quantity) {
-      return res.status(400).json({ success: false, error: 'Insufficient stock' });
+    if (product.stock < qty) {
+      return res.status(400).json({
+        success: false,
+        error: `Only ${product.stock} item(s) in stock`,
+      });
     }
 
-    // Check if item already exists in cart
+    // Always set (replace) the quantity in cart
     const cartRef = admin.database().ref(`cart/${userId}/${id}`);
-    const cartSnapshot = await cartRef.once('value');
-    if (cartSnapshot.exists()) {
-      // Update quantity if item exists
-      const currentItem = cartSnapshot.val();
-      const newQuantity = currentItem.quantity + quantity;
-      if (product.stock < newQuantity) {
-        return res.status(400).json({ success: false, error: 'Insufficient stock' });
-      }
-      await cartRef.update({
-        quantity: newQuantity,
-        updatedAt: admin.database.ServerValue.TIMESTAMP
-      });
-    } else {
-      // Add new item to cart
-      await cartRef.set({
-        name,
-        price,
-        image,
-        quantity,
-        addedAt: admin.database.ServerValue.TIMESTAMP,
-        updatedAt: admin.database.ServerValue.TIMESTAMP
-      });
-    }
+    await cartRef.set({
+      name,
+      price,
+      image,
+      quantity: qty,
+      addedAt: admin.database.ServerValue.TIMESTAMP,
+      updatedAt: admin.database.ServerValue.TIMESTAMP
+    });
 
     res.json({ success: true, message: 'Added to cart' });
   } catch (error) {

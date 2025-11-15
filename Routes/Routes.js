@@ -1,4 +1,3 @@
-// functions/src/Routes/Routes.js
 const express = require('express');
 const router = express.Router();
 const AuthController = require('../Controller/AuthController');
@@ -7,8 +6,8 @@ const { verifyAdmin, verifyUser } = require('../Middleware/authMiddleware');
 const upload = require('../Middleware/MulterMiddleware');
 const { admin } = require('../Config/firebaseAdmin');
 const OrderController = require('../Controller/OrderController');
+const CarouselController = require('../Controller/GalleryController');
 
-// TEMP: Set admin claim
 router.post('/set-admin', async (req, res) => {
   const { email } = req.body;
   try {
@@ -22,11 +21,9 @@ router.post('/set-admin', async (req, res) => {
   }
 });
 
-// AUTH
 router.post('/login', AuthController.login);
 router.post('/user/register', AuthController.registerUser);
 
-// PRODUCTS
 router.post('/admin/products', verifyAdmin, upload.array('images', 5), ProductController.addProduct);
 router.get('/admin/products', verifyAdmin, ProductController.getProducts);
 router.get('/admin/products/:id', verifyAdmin, ProductController.getProduct);
@@ -51,6 +48,15 @@ router.get('/admin/orders/:orderId', verifyAdmin, OrderController.getOrderById);
 router.get('/admin/orders', verifyAdmin, OrderController.getAllOrders);
 router.put('/admin/orders/:orderId', verifyAdmin, OrderController.updateOrder);
 router.delete('/admin/orders/:orderId', verifyAdmin, OrderController.deleteOrder);
+
+router.post('/admin/carousel', verifyAdmin, upload.single('image'), CarouselController.addSlide);
+router.get('/admin/carousel', verifyAdmin, CarouselController.getSlides);
+router.get('/admin/carousel/:id', verifyAdmin, CarouselController.getSlide);
+router.put('/admin/carousel/:id', verifyAdmin, upload.single('image'), CarouselController.updateSlide);
+router.delete('/admin/carousel/:id', verifyAdmin, CarouselController.deleteSlide);
+router.patch('/admin/carousel/reorder', verifyAdmin, CarouselController.reorderSlides);
+
+router.get('/carousel', CarouselController.getSlides); 
 
 
 // DASHBOARD

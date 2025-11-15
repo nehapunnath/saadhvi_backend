@@ -2,17 +2,15 @@ const OrderModel = require('../Models/OrderModel');
 const { admin } = require('../Config/firebaseAdmin');
 
 class OrderController {
-  /** POST /checkout */
   static async checkout(req, res) {
     try {
-      const userId = req.user.uid;                 // from verifyUser
+      const userId = req.user.uid;            
       const { name, email, phone, shipping } = req.body;
 
       if (!name || !email || !phone || !shipping) {
         return res.status(400).json({ success: false, error: 'Missing fields' });
       }
 
-      // 1. Fetch current cart
       const cartSnap = await admin.database().ref(`cart/${userId}`).once('value');
       if (!cartSnap.exists()) {
         return res.status(400).json({ success: false, error: 'Cart is empty' });
@@ -23,7 +21,6 @@ class OrderController {
         cartItems.push({ id: child.key, ...child.val() });
       });
 
-      // 2. Create order (stock reduction + clear cart)
       const result = await OrderModel.createOrder(userId, { name, email, phone, shipping }, cartItems);
 
       res.json({ success: true, orderId: result.orderId, order: result.order });
@@ -32,7 +29,6 @@ class OrderController {
       res.status(500).json({ success: false, error: err.message });
     }
   }
-  // Add to existing OrderController
 static async getAllOrders(req, res) {
   try {
     const snapshot = await admin.database().ref('orders').once('value');

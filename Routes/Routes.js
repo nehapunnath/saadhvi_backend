@@ -34,6 +34,9 @@ router.delete('/admin/products/:id', verifyAdmin, ProductController.deleteProduc
 router.get('/products', ProductController.getPublicProducts);
 router.get('/products/:id', ProductController.getPublicProduct);
 
+router.get('/products/search', ProductController.searchProducts);
+
+
 router.get('/wishlist', verifyUser, ProductController.getWishlist); 
 router.post('/wishlist', verifyUser, ProductController.addToWishlist); 
 router.delete('/wishlist/:id', verifyUser, ProductController.removeFromWishlist); 
@@ -57,6 +60,7 @@ router.delete('/admin/carousel/:id', verifyAdmin, CarouselController.deleteSlide
 router.patch('/admin/carousel/reorder', verifyAdmin, CarouselController.reorderSlides);
 
 router.get('/carousel', CarouselController.getSlides); 
+
 
 
 // DASHBOARD

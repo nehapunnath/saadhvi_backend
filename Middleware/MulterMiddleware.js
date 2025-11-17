@@ -1,10 +1,9 @@
-// functions/src/Middleware/multerMiddleware.js
 const multer = require('multer');
 
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { 
-    fileSize: 10 * 1024 * 1024 // 10MB per file
+    fileSize: 20 * 1024 * 1024 
   },
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('image/')) {

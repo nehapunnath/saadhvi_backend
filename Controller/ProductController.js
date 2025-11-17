@@ -296,7 +296,6 @@ static async addToCart(req, res) {
   }
 }
 
-// functions/src/Controller/ProductController.js
 
 static async updateCartItem(req, res) {
   try {
@@ -364,6 +363,78 @@ static async removeFromCart(req, res) {
   } catch (error) {
     console.error('Remove from Cart Error:', error);
     res.status(500).json({ success: false, error: 'Server error' });
+  }
+}
+
+static async searchProducts(req, res) {
+  try {
+    const { q } = req.query;
+
+    // Validate search query
+    if (!q || q.trim().length < 2) {
+      return res.json({ 
+        success: true, 
+        results: [],
+        message: 'Search query too short' 
+      });
+    }
+
+    const searchTerm = q.trim().toLowerCase();
+    console.log(`🔍 Searching for: "${searchTerm}"`);
+
+    const snapshot = await admin.database().ref('products').once('value');
+    const products = snapshot.val() || {};
+
+    console.log(`📦 Total products in DB: ${Object.keys(products).length}`);
+
+    const results = Object.entries(products)
+      .map(([id, product]) => {
+        if (!product) return null;
+        
+        return {
+          id,
+          name: product.name || '',
+          image: (product.images && product.images[0]) || '/placeholder.jpg',
+          price: product.price || 0,
+          category: product.category || '',
+          description: product.description || '',
+        };
+      })
+      .filter(Boolean)
+      .filter(p => {
+        // More comprehensive search matching
+        const searchableText = `
+          ${p.name || ''} 
+          ${p.category || ''} 
+          ${p.description || ''}
+        `.toLowerCase();
+        
+        return searchableText.includes(searchTerm);
+      })
+      .slice(0, 8) // Reduced from 10 to 8 for better UI
+      .map(p => ({
+        id: p.id,
+        name: p.name,
+        image: p.image,
+        price: p.price,
+        category: p.category,
+      }));
+
+    console.log(`✅ Found ${results.length} results for "${searchTerm}"`);
+    
+    res.json({ 
+      success: true, 
+      results,
+      count: results.length 
+    });
+    
+  } catch (error) {
+    console.error('❌ Search Error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Search failed',
+      message: error.message 
+    });
   }
 }
  

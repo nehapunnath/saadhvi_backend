@@ -12,7 +12,7 @@ const verifyAdmin = async (req, res, next) => {
     const result = await AuthModel.verifyToken(token);
     
     if (!result.success) {
-      return res.status(401).json({ success: false, error: 'Invalid token' });
+      return res.status(401).json({ success: false, error: 'Time Out! Please Login' });
     }
 
     const isAdmin = await AuthModel.isAdmin(result.decodedToken.uid);
@@ -38,7 +38,7 @@ const verifyUser = async (req, res, next) => {
     const result = await AuthModel.verifyToken(token);
     
     if (!result.success) {
-      return res.status(401).json({ success: false, error: 'Invalid token' });
+      return res.status(401).json({ success: false, error: 'Time Out! Please Login' });
     }
 
     req.user = result.decodedToken;

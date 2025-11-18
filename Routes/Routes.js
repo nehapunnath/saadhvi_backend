@@ -7,6 +7,7 @@ const upload = require('../Middleware/MulterMiddleware');
 const { admin } = require('../Config/firebaseAdmin');
 const OrderController = require('../Controller/OrderController');
 const CarouselController = require('../Controller/GalleryController');
+const CategoryController = require('../Controller/CategoryController');
 
 router.post('/set-admin', async (req, res) => {
   const { email } = req.body;
@@ -30,6 +31,14 @@ router.get('/admin/products/:id', verifyAdmin, ProductController.getProduct);
 router.put('/admin/products/:id', verifyAdmin, upload.array('images', 5), ProductController.updateProduct);
 router.patch('/admin/products/:id', verifyAdmin, ProductController.updateStock);
 router.delete('/admin/products/:id', verifyAdmin, ProductController.deleteProduct);
+
+router.get('/admin/categories', verifyAdmin, CategoryController.getCategories);
+router.post('/admin/categories', verifyAdmin, CategoryController.addCategory);
+router.put('/admin/categories/:id', verifyAdmin, CategoryController.updateCategory);
+router.delete('/admin/categories/:id', verifyAdmin, CategoryController.deleteCategory);
+router.get('/admin/categories/:id', verifyAdmin, CategoryController.getCategory);
+
+router.get('/categories', CategoryController.getCategories);
 
 router.get('/products', ProductController.getPublicProducts);
 router.get('/products/:id', ProductController.getPublicProduct);

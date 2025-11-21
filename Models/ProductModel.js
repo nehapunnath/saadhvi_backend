@@ -196,6 +196,44 @@ static async updateProduct(id, productData, imageFiles = []) {
     }
   }
 
+    static async updateOffer(id, offerData) {
+    try {
+      const validFields = ['hasOffer', 'offerName', 'offerPrice'];
+      const updates = {};
+
+      validFields.forEach(field => {
+        if (offerData[field] !== undefined) {
+          updates[field] = offerData[field];
+        }
+      });
+
+      // If turning off offer, clear name & price
+      if (offerData.hasOffer === false) {
+        updates.offerName = null;
+        updates.offerPrice = null;
+      }
+
+      // If turning on and price is provided, validate
+      if (offerData.hasOffer === true) {
+        if (!offerData.offerPrice || offerData.offerPrice <= 0) {
+          return { success: false, error: 'Offer price is required and must be > 0' };
+        }
+        updates.offerPrice = Number(offerData.offerPrice);
+        updates.offerName = offerData.offerName?.trim() || 'Special Offer';
+      }
+
+      updates.updatedAt = admin.database.ServerValue.TIMESTAMP;
+
+      await admin.database().ref(`products/${id}`).update(updates);
+
+      console.log(`Offer updated for product ${id}:`, updates);
+      return { success: true };
+    } catch (error) {
+      console.error('Update Offer Error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
 }
 
 module.exports = ProductModel;

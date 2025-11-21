@@ -30,6 +30,7 @@ router.get('/admin/products', verifyAdmin, ProductController.getProducts);
 router.get('/admin/products/:id', verifyAdmin, ProductController.getProduct);
 router.put('/admin/products/:id', verifyAdmin, upload.array('images', 5), ProductController.updateProduct);
 router.patch('/admin/products/:id', verifyAdmin, ProductController.updateStock);
+router.patch('/admin/products/:id/offer', verifyAdmin, ProductController.updateOffer);
 router.delete('/admin/products/:id', verifyAdmin, ProductController.deleteProduct);
 
 router.get('/admin/categories', verifyAdmin, CategoryController.getCategories);
@@ -69,6 +70,11 @@ router.delete('/admin/carousel/:id', verifyAdmin, CarouselController.deleteSlide
 router.patch('/admin/carousel/reorder', verifyAdmin, CarouselController.reorderSlides);
 
 router.get('/carousel', CarouselController.getSlides); 
+
+router.get('/admin/main-gallery-image', verifyAdmin, CarouselController.getMainGalleryImage);
+router.post('/admin/main-gallery-image', verifyAdmin, upload.single('image'), CarouselController.uploadMainGalleryImage);
+router.delete('/admin/main-gallery-image', verifyAdmin, CarouselController.deleteMainGalleryImage);
+router.get('/main-gallery-image', CarouselController.getMainGalleryImage);
 
 
 

@@ -183,6 +183,93 @@ class GalleryModel {
       return { success: false, error: error.message };
     }
   }
+
+
+static async getMainGalleryImage() {
+  try {
+    const snapshot = await admin.database().ref('mainGalleryImage').once('value');
+    if (!snapshot.exists()) {
+      return { success: true, image: null };
+    }
+    const data = snapshot.val();
+    return { success: true, image: data.imageUrl };
+  } catch (error) {
+    console.error('Get Main Gallery Image Error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+static async uploadMainGalleryImage(imageFile) {
+  try {
+    let imageUrl = '';
+
+    const bucket = storage.bucket();
+    const fileName = `main-gallery/${Date.now()}_${imageFile.originalname}`;
+    const fileUpload = bucket.file(fileName);
+
+    const stream = fileUpload.createWriteStream({
+      metadata: { contentType: imageFile.mimetype }
+    });
+
+    stream.end(imageFile.buffer);
+
+    await new Promise((resolve, reject) => {
+      stream.on('finish', async () => {
+        try {
+          const [url] = await fileUpload.getSignedUrl({
+            action: 'read',
+            expires: '03-09-2491'
+          });
+          imageUrl = url;
+          resolve();
+        } catch (err) {
+          reject(err);
+        }
+      });
+      stream.on('error', reject);
+    });
+
+    const mainImageData = {
+      imageUrl: imageUrl,
+      uploadedAt: admin.database.ServerValue.TIMESTAMP,
+      fileName: fileName
+    };
+
+    await admin.database().ref('mainGalleryImage').set(mainImageData);
+    console.log('Main gallery image uploaded');
+    return { success: true, imageUrl };
+  } catch (error) {
+    console.error('Upload Main Gallery Image Error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+static async deleteMainGalleryImage() {
+  try {
+    const snapshot = await admin.database().ref('mainGalleryImage').once('value');
+    if (!snapshot.exists()) {
+      return { success: false, error: 'Main gallery image not found' };
+    }
+
+    const mainImageData = snapshot.val();
+    
+    if (mainImageData.imageUrl) {
+      try {
+        const filePath = mainImageData.imageUrl.split('/o/')[1].split('?')[0];
+        await storage.bucket().file(decodeURIComponent(filePath)).delete();
+      } catch (err) {
+        console.warn('Failed to delete main image from storage:', err.message);
+      }
+    }
+
+    await admin.database().ref('mainGalleryImage').remove();
+    console.log('Main gallery image deleted');
+    return { success: true };
+  } catch (error) {
+    console.error('Delete Main Gallery Image Error:', error);
+    return { success: false, error: error.message };
+  }
+}
 }
 
 module.exports = GalleryModel;

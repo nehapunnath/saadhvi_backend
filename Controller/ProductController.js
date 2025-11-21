@@ -141,6 +141,9 @@ static async getPublicProducts(req, res) {
         extraCharges: product.extraCharges,
         occasion: product.occasion,
         images: product.images,
+        hasOffer: product.hasOffer || false,
+        offerPrice: product.offerPrice || null,
+        offerName: product.offerName || null,
         createdAt: product.createdAt
       }));
       
@@ -180,6 +183,9 @@ static async getPublicProduct(req, res) {
         extraCharges: result.product.extraCharges,
         occasion: result.product.occasion,
         images: result.product.images,
+        hasOffer: result.product.hasOffer || false,
+        offerPrice: result.product.offerPrice || null,
+        offerName: result.product.offerName || null,
         createdAt: result.product.createdAt
       };
       
@@ -437,6 +443,37 @@ static async searchProducts(req, res) {
     });
   }
 }
+  static async updateOffer(req, res) {
+    try {
+      const { id } = req.params;
+      const { hasOffer, offerName, offerPrice } = req.body;
+
+      // Basic validation
+      if (hasOffer === true) {
+        if (!offerPrice || offerPrice <= 0) {
+          return res.status(400).json({
+            success: false,
+            error: 'Offer price is required when enabling offer'
+          });
+        }
+      }
+
+      const result = await ProductModel.updateOffer(id, {
+        hasOffer,
+        offerName,
+        offerPrice: offerPrice ? Number(offerPrice) : null
+      });
+
+      if (result.success) {
+        res.json({ success: true, message: 'Offer updated successfully' });
+      } else {
+        res.status(400).json({ success: false, error: result.error });
+      }
+    } catch (error) {
+      console.error('Update Offer Controller Error:', error);
+      res.status(500).json({ success: false, error: 'Server error' });
+    }
+  }
  
 }
 

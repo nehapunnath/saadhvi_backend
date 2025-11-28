@@ -78,7 +78,6 @@ router.get('/main-gallery-image', CarouselController.getMainGalleryImage);
 
 
 
-// DASHBOARD
 router.get('/admin/dashboard', verifyAdmin, (req, res) => {
   res.json({ 
     success: true, 

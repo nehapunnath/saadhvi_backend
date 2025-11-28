@@ -237,3 +237,4 @@ static async updateProduct(id, productData, imageFiles = []) {
 }
 
 module.exports = ProductModel;
+

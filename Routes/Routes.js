@@ -76,6 +76,16 @@ router.post('/admin/main-gallery-image', verifyAdmin, upload.single('image'), Ca
 router.delete('/admin/main-gallery-image', verifyAdmin, CarouselController.deleteMainGalleryImage);
 router.get('/main-gallery-image', CarouselController.getMainGalleryImage);
 
+router.post('/admin/collections', verifyAdmin, upload.single('image'), CarouselController.addCollection);
+router.get('/admin/collections', verifyAdmin, CarouselController.getCollections);
+router.get('/admin/collections/:id', verifyAdmin, CarouselController.getCollection);
+router.put('/admin/collections/:id', verifyAdmin, upload.single('image'), CarouselController.updateCollection);
+router.delete('/admin/collections/:id', verifyAdmin, CarouselController.deleteCollection);
+router.patch('/admin/collections/reorder', verifyAdmin, CarouselController.reorderCollections);
+
+// Public collection route
+router.get('/collections', CarouselController.getPublicCollections);
+
 
 
 router.get('/admin/dashboard', verifyAdmin, (req, res) => {

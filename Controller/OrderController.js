@@ -3,32 +3,61 @@ const { admin } = require('../Config/firebaseAdmin');
 
 class OrderController {
   static async checkout(req, res) {
-    try {
-      const userId = req.user.uid;            
-      const { name, email, phone, shipping } = req.body;
+  try {
+    const userId = req.user.uid;
+    const { name, email, phone, shipping } = req.body;
 
-      if (!name || !email || !phone || !shipping) {
-        return res.status(400).json({ success: false, error: 'Missing fields' });
-      }
-
-      const cartSnap = await admin.database().ref(`cart/${userId}`).once('value');
-      if (!cartSnap.exists()) {
-        return res.status(400).json({ success: false, error: 'Cart is empty' });
-      }
-
-      const cartItems = [];
-      cartSnap.forEach(child => {
-        cartItems.push({ id: child.key, ...child.val() });
-      });
-
-      const result = await OrderModel.createOrder(userId, { name, email, phone, shipping }, cartItems);
-
-      res.json({ success: true, orderId: result.orderId, order: result.order });
-    } catch (err) {
-      console.error('Checkout error:', err);
-      res.status(500).json({ success: false, error: err.message });
+    if (!name || !email || !phone || !shipping) {
+      return res.status(400).json({ success: false, error: 'Missing fields' });
     }
+
+    // Get raw cart from database
+    const cartSnap = await admin.database().ref(`cart/${userId}`).once('value');
+    if (!cartSnap.exists()) {
+      return res.status(400).json({ success: false, error: 'Cart is empty' });
+    }
+
+    const rawCartItems = [];
+    cartSnap.forEach(child => {
+      rawCartItems.push({ id: child.key, ...child.val() });
+    });
+
+    // Enrich with current product data (especially extraCharges)
+    const enrichedCartItems = [];
+    for (const cartItem of rawCartItems) {
+      const productSnap = await admin.database().ref(`products/${cartItem.id}`).once('value');
+      if (productSnap.exists()) {
+        const product = productSnap.val();
+        enrichedCartItems.push({
+          id: cartItem.id,
+          name: product.name || cartItem.name,
+          price: Number(product.price || cartItem.price || 0),
+          image: (product.images?.[0]) || cartItem.image || '',
+          quantity: Number(cartItem.quantity || 1),
+          extraCharges: Number(product.extraCharges || 0),   // ← This is where it comes from
+        });
+      } else {
+        console.warn(`Product ${cartItem.id} not found during checkout - skipping`);
+      }
+    }
+
+    if (enrichedCartItems.length === 0) {
+      return res.status(400).json({ success: false, error: 'No valid products in cart' });
+    }
+
+    console.log('Enriched cart items for order:', enrichedCartItems.map(i => ({
+      id: i.id,
+      extraCharges: i.extraCharges
+    })));
+
+    const result = await OrderModel.createOrder(userId, { name, email, phone, shipping }, enrichedCartItems);
+
+    res.json({ success: true, orderId: result.orderId, order: result.order });
+  } catch (err) {
+    console.error('Checkout error:', err);
+    res.status(500).json({ success: false, error: err.message });
   }
+}
 static async getAllOrders(req, res) {
   try {
     const snapshot = await admin.database().ref('orders').once('value');

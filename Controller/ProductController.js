@@ -243,12 +243,41 @@ static async getWishlist(req, res) {
   }
   static async getCart(req, res) {
   try {
-    const userId = req.user.uid; // From verifyToken middleware
-    const snapshot = await admin.database().ref(`cart/${userId}`).once('value');
+    const userId = req.user.uid;
+
+    const cartSnapshot = await admin.database().ref(`cart/${userId}`).once('value');
+    
+    if (!cartSnapshot.exists()) {
+      return res.json({ success: true, items: [] });
+    }
+
+    const cartData = cartSnapshot.val(); 
     const items = [];
-    snapshot.forEach(child => {
-      items.push({ id: child.key, ...child.val() });
-    });
+
+    for (const [productId, cartEntry] of Object.entries(cartData)) {
+      const productSnapshot = await admin.database().ref(`products/${productId}`).once('value');
+
+      if (productSnapshot.exists()) {
+        const product = productSnapshot.val();
+
+        items.push({
+          id: productId,
+          name: product.name || cartEntry.name || 'Unknown Product',
+          price: Number(product.price) || Number(cartEntry.price) || 0,
+          image: (product.images && product.images[0]) || cartEntry.image || '',
+          quantity: Number(cartEntry.quantity) || 1,
+
+          extraCharges: Number(product.extraCharges) || 0,
+          
+        });
+      } else {
+      
+        console.warn(`Product ${productId} not found for user ${userId} - skipping in cart response`);
+      }
+    }
+
+    console.log(`Returning ${items.length} cart items for user ${userId}`);
+
     res.json({ success: true, items });
   } catch (error) {
     console.error('Get Cart Error:', error);

@@ -95,7 +95,6 @@ class GalleryController {
   }
 
   // functions/src/Controller/GalleryController.js
-// Add these methods to your existing GalleryController class
 
 static async getMainGalleryImage(req, res) {
   try {

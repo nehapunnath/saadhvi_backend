@@ -38,7 +38,7 @@ class OrderModel {
       price: Number(i.price || 0),
       image: i.image || '',
       quantity: Number(i.quantity || 1),
-      extraCharges: Number(i.extraCharges || 0),   // ← crucial line added
+      extraCharges: Number(i.extraCharges || 0),
     })),
     shippingAddress: orderData.shipping,
     contact: {
@@ -46,15 +46,20 @@ class OrderModel {
       email: orderData.email,
       phone: orderData.phone,
     },
-    productSubtotal,      // clearer field names
-    shippingTotal,        // renamed from 'shipping'
+    productSubtotal,
+    shippingTotal,
     total: grandTotal,
     status: 'pending',
-    paymentStatus: 'pending',
+    
+    // ────────────────────────────────────────────────
+    // NEW: Payment method & initial status
+    // ────────────────────────────────────────────────
+    paymentMethod: orderData.paymentMethod || 'upi',
+    paymentStatus: orderData.paymentMethod === 'cod' ? 'pending' : 'pending', // COD starts as pending too
+
     createdAt: admin.database.ServerValue.TIMESTAMP,
     updatedAt: admin.database.ServerValue.TIMESTAMP,
   };
-
   // ────────────────────────────────────────────────
   // 3. Reduce stock (atomic)
   // ────────────────────────────────────────────────

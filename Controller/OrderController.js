@@ -5,9 +5,9 @@ class OrderController {
   static async checkout(req, res) {
   try {
     const userId = req.user.uid;
-    const { name, email, phone, shipping } = req.body;
+    const { name, email, phone, shipping,paymentMethod } = req.body;
 
-    if (!name || !email || !phone || !shipping) {
+    if (!name || !email || !phone || !shipping || !paymentMethod) {
       return res.status(400).json({ success: false, error: 'Missing fields' });
     }
 
@@ -50,7 +50,7 @@ class OrderController {
       extraCharges: i.extraCharges
     })));
 
-    const result = await OrderModel.createOrder(userId, { name, email, phone, shipping }, enrichedCartItems);
+    const result = await OrderModel.createOrder(userId, { name, email, phone, shipping,paymentMethod, }, enrichedCartItems);
 
     res.json({ success: true, orderId: result.orderId, order: result.order });
   } catch (err) {

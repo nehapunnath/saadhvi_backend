@@ -67,6 +67,7 @@ static async addProduct(productData, imageFiles) {
       extraCharges: productData.extraCharges || '',
       occasion: productData.occasion || [],
       images: imageUrls, 
+      isVisible: true,
       createdAt: admin.database.ServerValue.TIMESTAMP,
       updatedAt: admin.database.ServerValue.TIMESTAMP
     };
@@ -80,12 +81,15 @@ static async addProduct(productData, imageFiles) {
     return { success: false, error: error.message };
   }
 }
-  static async getProducts() {
+  static async getProducts(adminView = false) {
     try {
       const snapshot = await admin.database().ref('products').once('value');
       const products = [];
-      snapshot.forEach(child => {
-        products.push({ ...child.val(), key: child.key });
+     snapshot.forEach(child => {
+        const val = child.val();
+        if (adminView || val.isVisible !== false) {      // ← key safety condition
+          products.push({ ...val, key: child.key });
+        }
       });
       console.log('✅ Fetched', products.length, 'products');
       return { success: true, products };
@@ -172,6 +176,9 @@ static async updateProduct(id, productData, imageFiles = []) {
       extraCharges: productData.extraCharges || '',
       occasion: productData.occasion || [],
       images: imageUrls, 
+      isVisible: productData.isVisible !== undefined
+          ? productData.isVisible === 'true' || productData.isVisible === true
+          : existingProduct.isVisible ?? true,
       updatedAt: admin.database.ServerValue.TIMESTAMP
     };
 

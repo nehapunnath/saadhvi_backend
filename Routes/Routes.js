@@ -32,6 +32,7 @@ router.put('/admin/products/:id', verifyAdmin, upload.array('images', 5), Produc
 router.patch('/admin/products/:id', verifyAdmin, ProductController.updateStock);
 router.patch('/admin/products/:id/offer', verifyAdmin, ProductController.updateOffer);
 router.delete('/admin/products/:id', verifyAdmin, ProductController.deleteProduct);
+router.patch('/admin/products/:id/visibility', verifyAdmin, ProductController.toggleProductVisibility);
 
 router.get('/admin/categories', verifyAdmin, CategoryController.getCategories);
 router.post('/admin/categories', verifyAdmin, CategoryController.addCategory);

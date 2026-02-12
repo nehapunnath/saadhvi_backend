@@ -34,7 +34,7 @@ class ProductController {
 
   static async getProducts(req, res) {
     try {
-      const result = await ProductModel.getProducts();
+      const result = await ProductModel.getProducts(true);
       if (result.success) {
         res.json({ success: true, products: result.products });
       } else {
@@ -118,7 +118,7 @@ static async updateStock(req, res) {
 
 static async getPublicProducts(req, res) {
   try {
-    const result = await ProductModel.getProducts();
+    const result = await ProductModel.getProducts(false);
     if (result.success) {
       // Return only necessary fields for public viewing
       const publicProducts = result.products.map(product => ({
@@ -144,7 +144,8 @@ static async getPublicProducts(req, res) {
         hasOffer: product.hasOffer || false,
         offerPrice: product.offerPrice || null,
         offerName: product.offerName || null,
-        createdAt: product.createdAt
+        createdAt: product.createdAt,
+        isVisible: product.isVisible !== false
       }));
       
       res.json({ success: true, products: publicProducts });
@@ -503,6 +504,39 @@ static async searchProducts(req, res) {
       res.status(500).json({ success: false, error: 'Server error' });
     }
   }
+  static async toggleProductVisibility(req, res) {
+  try {
+    const { id } = req.params;
+    const { isVisible } = req.body;
+
+    if (isVisible === undefined) {
+      return res.status(400).json({ success: false, error: 'isVisible field is required' });
+    }
+
+    const snapshot = await admin.database().ref(`products/${id}`).once('value');
+    if (!snapshot.exists()) {
+      return res.status(404).json({ success: false, error: 'Product not found' });
+    }
+
+    const newVisibility = isVisible === true || isVisible === 'true';
+
+    await admin.database().ref(`products/${id}`).update({
+      isVisible: newVisibility,
+      updatedAt: admin.database.ServerValue.TIMESTAMP
+    });
+
+    console.log(`Visibility updated for product ${id} → ${newVisibility ? 'visible' : 'hidden'}`);
+
+    res.json({
+      success: true,
+      message: `Product is now ${newVisibility ? 'visible' : 'hidden'}`,
+      isVisible: newVisibility
+    });
+  } catch (error) {
+    console.error('Toggle Visibility Error:', error);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+}
  
 }
 

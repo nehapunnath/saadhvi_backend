@@ -8,6 +8,7 @@ const { admin } = require('../Config/firebaseAdmin');
 const OrderController = require('../Controller/OrderController');
 const CarouselController = require('../Controller/GalleryController');
 const CategoryController = require('../Controller/CategoryController');
+const BadgeController = require('../Controller/BadgeController');
 
 router.post('/set-admin', async (req, res) => {
   const { email } = req.body;
@@ -39,6 +40,12 @@ router.post('/admin/categories', verifyAdmin, CategoryController.addCategory);
 router.put('/admin/categories/:id', verifyAdmin, CategoryController.updateCategory);
 router.delete('/admin/categories/:id', verifyAdmin, CategoryController.deleteCategory);
 router.get('/admin/categories/:id', verifyAdmin, CategoryController.getCategory);
+
+router.get('/admin/badges', verifyAdmin, BadgeController.getBadges);
+router.post('/admin/badges', verifyAdmin, BadgeController.addBadge);
+router.put('/admin/badges/:id', verifyAdmin, BadgeController.updateBadge);
+router.delete('/admin/badges/:id', verifyAdmin, BadgeController.deleteBadge);
+router.get('/badges', BadgeController.getBadges);
 
 router.get('/categories', CategoryController.getCategories);
 

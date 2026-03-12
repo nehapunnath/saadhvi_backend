@@ -92,14 +92,19 @@ const app = express();
 app.use(cors({ origin: true }));
 app.use(express.json({ limit: '10mb' }));
 
+// Health check route
+app.get("/", (req, res) => {
+  res.status(200).send("Backend is running");
+});
+
 // Routes
 app.use('/', routes);
 
 // LOCAL SERVER
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(` Server running on http://localhost:${PORT}`);
+  console.log(`Server running on http://localhost:${PORT}`);
 });
 
-// ALSO export for Firebase (future)
+// Export for Firebase
 exports.api = functions.https.onRequest(app);

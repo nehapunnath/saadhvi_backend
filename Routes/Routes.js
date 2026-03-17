@@ -29,11 +29,14 @@ router.post('/user/register', AuthController.registerUser);
 router.post('/admin/products', verifyAdmin, upload.array('images', 5), ProductController.addProduct);
 router.get('/admin/products', verifyAdmin, ProductController.getProducts);
 router.get('/admin/products/:id', verifyAdmin, ProductController.getProduct);
+router.patch('/admin/products/reorder', verifyAdmin, ProductController.reorderProducts);
+router.get('/admin/products/visible-order', verifyAdmin, ProductController.getVisibleOrder);
 router.put('/admin/products/:id', verifyAdmin, upload.array('images', 5), ProductController.updateProduct);
 router.patch('/admin/products/:id', verifyAdmin, ProductController.updateStock);
 router.patch('/admin/products/:id/offer', verifyAdmin, ProductController.updateOffer);
 router.delete('/admin/products/:id', verifyAdmin, ProductController.deleteProduct);
 router.patch('/admin/products/:id/visibility', verifyAdmin, ProductController.toggleProductVisibility);
+
 
 router.get('/admin/categories', verifyAdmin, CategoryController.getCategories);
 router.post('/admin/categories', verifyAdmin, CategoryController.addCategory);

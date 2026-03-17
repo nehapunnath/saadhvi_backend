@@ -47,6 +47,16 @@ static async addProduct(productData, imageFiles) {
     }
 
     const productId = admin.database().ref('products').push().key;
+
+      const snapshot = await admin.database().ref('products').once('value');
+    let maxOrder = 0;
+    snapshot.forEach(child => {
+      const val = child.val();
+      if (val.displayOrder && val.displayOrder > maxOrder) {
+        maxOrder = val.displayOrder;
+      }
+    });
+
     const product = {
       id: productId,
       name: productData.name,
@@ -68,6 +78,7 @@ static async addProduct(productData, imageFiles) {
       occasion: productData.occasion || [],
       images: imageUrls, 
       isVisible: true,
+      displayOrder: maxOrder + 1,
       createdAt: admin.database.ServerValue.TIMESTAMP,
       updatedAt: admin.database.ServerValue.TIMESTAMP
     };
@@ -88,7 +99,9 @@ static async addProduct(productData, imageFiles) {
      snapshot.forEach(child => {
         const val = child.val();
         if (adminView || val.isVisible !== false) {      // ← key safety condition
-          products.push({ ...val, key: child.key });
+          products.push({ ...val, key: child.key ,
+            displayOrder: val.displayOrder || null
+          });
         }
       });
       console.log('✅ Fetched', products.length, 'products');
@@ -107,6 +120,7 @@ static async addProduct(productData, imageFiles) {
       }
       const product = snapshot.val();
       product.key = id;
+      product.displayOrder = product.displayOrder || null;
       return { success: true, product };
     } catch (error) {
       return { success: false, error: error.message };
@@ -238,6 +252,62 @@ static async updateProduct(id, productData, imageFiles = []) {
     } catch (error) {
       console.error('Update Offer Error:', error);
       return { success: false, error: error.message };
+    }
+  }
+  static async reorderProducts(orderMap) {   // orderMap = { productId: newDisplayOrder, ... }
+    try {
+      const updates = {};
+
+      for (const [productId, order] of Object.entries(orderMap)) {
+        if (!productId || typeof order !== 'number') continue;
+        
+        updates[`products/${productId}/displayOrder`] = order;
+        updates[`products/${productId}/updatedAt`] = admin.database.ServerValue.TIMESTAMP;
+      }
+
+      if (Object.keys(updates).length === 0) {
+        return { success: false, error: "No valid updates provided" };
+      }
+
+      await admin.database().ref().update(updates);
+
+      console.log(`Reordered ${Object.keys(orderMap).length} products`);
+      return { success: true };
+    } catch (error) {
+      console.error('Reorder products failed:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Optional helper: Get current order of visible products (useful for debugging)
+  static async getVisibleProductsOrder() {
+    try {
+      const snapshot = await admin.database().ref('products')
+        .orderByChild('isVisible')
+        .equalTo(true)
+        .once('value');
+
+      const ordered = [];
+      snapshot.forEach(child => {
+        const val = child.val();
+        ordered.push({
+          id: child.key,
+          name: val.name || 'Unnamed',
+          displayOrder: val.displayOrder || 9999,
+          isVisible: val.isVisible !== false
+        });
+      });
+
+      // Sort by displayOrder (fallback to createdAt / key if missing)
+      ordered.sort((a, b) => {
+        const oa = a.displayOrder ?? 999999;
+        const ob = b.displayOrder ?? 999999;
+        return oa - ob;
+      });
+
+      return { success: true, orderedProducts: ordered };
+    } catch (err) {
+      return { success: false, error: err.message };
     }
   }
 

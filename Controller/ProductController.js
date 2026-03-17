@@ -114,13 +114,18 @@ static async updateStock(req, res) {
     res.status(500).json({ success: false, error: 'Server error' });
   }
 }
-// Add these methods to your existing ProductController class
 
+// In ProductController.js
 static async getPublicProducts(req, res) {
   try {
     const result = await ProductModel.getProducts(false);
     if (result.success) {
-      // Return only necessary fields for public viewing
+      // Log what we're getting from the model
+      console.log("Raw products from model:", result.products.length);
+      if (result.products.length > 0) {
+        console.log("First product displayOrder:", result.products[0].displayOrder);
+      }
+      
       const publicProducts = result.products.map(product => ({
         id: product.id,
         name: product.name,
@@ -145,8 +150,13 @@ static async getPublicProducts(req, res) {
         offerPrice: product.offerPrice || null,
         offerName: product.offerName || null,
         createdAt: product.createdAt,
-        isVisible: product.isVisible !== false
+        isVisible: product.isVisible !== false,
+        displayOrder: product.displayOrder || null // Make sure this line exists
       }));
+      
+      // Log what we're sending to frontend
+      console.log("Sending public products with displayOrder:", 
+        publicProducts.map(p => ({ name: p.name, displayOrder: p.displayOrder })));
       
       res.json({ success: true, products: publicProducts });
     } else {
@@ -187,7 +197,8 @@ static async getPublicProduct(req, res) {
         hasOffer: result.product.hasOffer || false,
         offerPrice: result.product.offerPrice || null,
         offerName: result.product.offerName || null,
-        createdAt: result.product.createdAt
+        createdAt: result.product.createdAt,
+        displayOrder: result.product.displayOrder || null,
       };
       
       res.json({ success: true, product: publicProduct });
@@ -537,7 +548,41 @@ static async searchProducts(req, res) {
     res.status(500).json({ success: false, error: 'Server error' });
   }
 }
- 
+
+static async reorderProducts(req, res) {
+    try {
+      const { orderMap } = req.body;   // { "prod_abc123": 1, "prod_def456": 2, ... }
+
+      if (!orderMap || typeof orderMap !== 'object') {
+        return res.status(400).json({ success: false, error: "orderMap object is required" });
+      }
+
+      const result = await ProductModel.reorderProducts(orderMap);
+
+      if (result.success) {
+        res.json({ success: true, message: "Products reordered successfully" });
+      } else {
+        res.status(400).json(result);
+      }
+    } catch (error) {
+      console.error('Reorder controller error:', error);
+      res.status(500).json({ success: false, error: 'Server error' });
+    }
+  }
+
+  static async getVisibleOrder(req, res) {
+    try {
+      const result = await ProductModel.getVisibleProductsOrder();
+      if (result.success) {
+        res.json(result);
+      } else {
+        res.status(500).json(result);
+      }
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
 }
 
 module.exports = ProductController;

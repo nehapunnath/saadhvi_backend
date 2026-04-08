@@ -127,6 +127,8 @@ static async addProduct(productData, imageFiles) {
     }
   }
 
+// Update the updateProduct method in ProductModel.js
+
 static async updateProduct(id, productData, imageFiles = []) {
   try {
     const snapshot = await admin.database().ref(`products/${id}`).once('value');
@@ -135,8 +137,48 @@ static async updateProduct(id, productData, imageFiles = []) {
     }
 
     const existingProduct = snapshot.val();
-    let imageUrls = existingProduct.images || []; 
+    let imageUrls = existingProduct.images || [];
+    
+    // Handle images to delete
+    let imagesToDelete = [];
+    if (productData.imagesToDelete) {
+      try {
+        imagesToDelete = JSON.parse(productData.imagesToDelete);
+        console.log('📸 Images to delete:', imagesToDelete.length);
+      } catch (e) {
+        console.error('Failed to parse imagesToDelete:', e);
+      }
+    }
 
+    // Remove deleted images from the URLs array
+    if (imagesToDelete.length > 0) {
+      imageUrls = imageUrls.filter(url => !imagesToDelete.includes(url));
+      
+      // Delete actual files from Firebase Storage
+      const bucket = storage.bucket();
+      for (const imageUrl of imagesToDelete) {
+        try {
+          // Extract file path from signed URL
+          // Signed URL format: https://storage.googleapis.com/bucket-name/path?GoogleAccessId=...
+          const urlParts = imageUrl.split('?')[0];
+          const pathParts = urlParts.split('/o/');
+          if (pathParts.length > 1) {
+            let filePath = decodeURIComponent(pathParts[1]);
+            // Remove bucket name if present
+            filePath = filePath.replace(`${bucket.name}/`, '');
+            
+            const file = bucket.file(filePath);
+            await file.delete();
+            console.log(`🗑️ Deleted image: ${filePath}`);
+          }
+        } catch (error) {
+          console.error(`Failed to delete image ${imageUrl}:`, error);
+          // Continue with other deletions even if one fails
+        }
+      }
+    }
+
+    // Add new images
     if (imageFiles && imageFiles.length > 0) {
       console.log(`🔄 Adding ${imageFiles.length} new images`);
       
@@ -160,7 +202,7 @@ static async updateProduct(id, productData, imageFiles = []) {
                 expires: '03-09-2491'
               });
               imageUrls.push(url);
-              console.log(`New image ${i + 1} uploaded:`, url);
+              console.log(`✅ New image ${i + 1} uploaded:`, url);
               resolve();
             } catch (error) {
               reject(error);
@@ -197,15 +239,14 @@ static async updateProduct(id, productData, imageFiles = []) {
     };
 
     await admin.database().ref(`products/${id}`).update(updates);
-    console.log('Product updated:', id, 'Total images:', imageUrls.length);
+    console.log('✅ Product updated:', id, 'Total images:', imageUrls.length);
     
     return { success: true, productId: id };
   } catch (error) {
-    console.error(' Update Error:', error);
+    console.error('💥 Update Error:', error);
     return { success: false, error: error.message };
   }
 }
-
   static async deleteProduct(id) {
     try {
       await admin.database().ref(`products/${id}`).remove();

@@ -4,33 +4,50 @@ const { admin } = require('../Config/firebaseAdmin');
 
 class ProductController {
   static async addProduct(req, res) {
-    try {
-      let productData = req.body;
-      const imageFiles = req.files; 
+  try {
+    let productData = req.body;
+    const imageFiles = req.files;
 
-      
-      if (productData.occasion) {
+    // Parse occasion if it's a string
+    if (productData.occasion) {
+      try {
         productData.occasion = JSON.parse(productData.occasion);
+      } catch (e) {
+        productData.occasion = productData.occasion ? [productData.occasion] : [];
       }
-
-      console.log(' ADD PRODUCT -', imageFiles?.length || 0, 'images');
-
-      const result = await ProductModel.addProduct(productData, imageFiles);
-      
-      if (result.success) {
-        res.json({ 
-          success: true, 
-          message: 'Product added successfully!',
-          productId: result.productId 
-        });
-      } else {
-        res.status(400).json({ success: false, error: result.error });
-      }
-    } catch (error) {
-      console.error(' Controller Error:', error);
-      res.status(500).json({ success: false, error: 'Server error' });
     }
+
+    // Parse categories if it's a string (coming from FormData)
+    if (productData.categories) {
+      try {
+        productData.categories = JSON.parse(productData.categories);
+      } catch (e) {
+        // If it's a single category ID as string, convert to array
+        productData.categories = productData.categories ? [productData.categories] : [];
+      }
+    } else {
+      productData.categories = [];
+    }
+
+    console.log(' ADD PRODUCT -', imageFiles?.length || 0, 'images');
+    console.log(' Categories:', productData.categories);
+
+    const result = await ProductModel.addProduct(productData, imageFiles);
+    
+    if (result.success) {
+      res.json({ 
+        success: true, 
+        message: 'Product added successfully!',
+        productId: result.productId 
+      });
+    } else {
+      res.status(400).json({ success: false, error: result.error });
+    }
+  } catch (error) {
+    console.error(' Controller Error:', error);
+    res.status(500).json({ success: false, error: 'Server error' });
   }
+}
 
   static async getProducts(req, res) {
     try {
@@ -60,26 +77,47 @@ class ProductController {
   }
 
   static async updateProduct(req, res) {
-    try {
-      const { id } = req.params;
-      let productData = req.body;
-      const imageFiles = req.files;
+  try {
+    const { id } = req.params;
+    let productData = req.body;
+    const imageFiles = req.files;
 
-      if (productData.occasion) {
+    // Parse occasion if it's a string
+    if (productData.occasion) {
+      try {
         productData.occasion = JSON.parse(productData.occasion);
+      } catch (e) {
+        productData.occasion = productData.occasion ? [productData.occasion] : [];
       }
-
-      const result = await ProductModel.updateProduct(id, productData, imageFiles);
-      
-      if (result.success) {
-        res.json({ success: true, message: 'Product updated successfully!' });
-      } else {
-        res.status(400).json({ success: false, error: result.error });
-      }
-    } catch (error) {
-      res.status(500).json({ success: false, error: 'Server error' });
     }
+
+    // Parse categories if it's a string (coming from FormData)
+    if (productData.categories) {
+      try {
+        productData.categories = JSON.parse(productData.categories);
+      } catch (e) {
+        // If it's a single category ID as string, convert to array
+        productData.categories = productData.categories ? [productData.categories] : [];
+      }
+    } else {
+      productData.categories = [];
+    }
+
+    console.log(' UPDATE PRODUCT -', imageFiles?.length || 0, 'new images');
+    console.log(' Categories:', productData.categories);
+
+    const result = await ProductModel.updateProduct(id, productData, imageFiles);
+    
+    if (result.success) {
+      res.json({ success: true, message: 'Product updated successfully!' });
+    } else {
+      res.status(400).json({ success: false, error: result.error });
+    }
+  } catch (error) {
+    console.error(' Controller Error:', error);
+    res.status(500).json({ success: false, error: 'Server error' });
   }
+}
 
   static async deleteProduct(req, res) {
     try {
@@ -120,17 +158,11 @@ static async getPublicProducts(req, res) {
   try {
     const result = await ProductModel.getProducts(false);
     if (result.success) {
-      // Log what we're getting from the model
-      console.log("Raw products from model:", result.products.length);
-      if (result.products.length > 0) {
-        console.log("First product displayOrder:", result.products[0].displayOrder);
-      }
-      
       const publicProducts = result.products.map(product => ({
         id: product.id,
         name: product.name,
         description: product.description,
-        category: product.category,
+        categories: product.categories || [], // Ensure categories is an array
         price: product.price,
         originalPrice: product.originalPrice,
         stock: product.stock,
@@ -151,12 +183,8 @@ static async getPublicProducts(req, res) {
         offerName: product.offerName || null,
         createdAt: product.createdAt,
         isVisible: product.isVisible !== false,
-        displayOrder: product.displayOrder || null // Make sure this line exists
+        displayOrder: product.displayOrder || null
       }));
-      
-      // Log what we're sending to frontend
-      console.log("Sending public products with displayOrder:", 
-        publicProducts.map(p => ({ name: p.name, displayOrder: p.displayOrder })));
       
       res.json({ success: true, products: publicProducts });
     } else {
@@ -173,12 +201,11 @@ static async getPublicProduct(req, res) {
     const { id } = req.params;
     const result = await ProductModel.getProduct(id);
     if (result.success) {
-      // Return only necessary fields for public viewing
       const publicProduct = {
         id: result.product.id,
         name: result.product.name,
         description: result.product.description,
-        category: result.product.category,
+        categories: result.product.categories || [], // Ensure categories is an array
         price: result.product.price,
         originalPrice: result.product.originalPrice,
         stock: result.product.stock,
@@ -210,6 +237,7 @@ static async getPublicProduct(req, res) {
     res.status(500).json({ success: false, error: 'Server error' });
   }
 }
+
 static async getWishlist(req, res) {
     try {
       const userId = req.user.uid; // From verifyToken middleware

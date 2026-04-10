@@ -68,37 +68,38 @@ class CategoryModel {
   }
 
   static async deleteCategory(id, excludeProductId = null) {
-    try {
-      // Check if category is used in any products (excluding the current product if provided)
-      const productsSnapshot = await admin.database().ref('products').once('value');
-      let isUsed = false;
-      
-      productsSnapshot.forEach(child => {
-        const product = child.val();
-        // Skip the excluded product (current product being edited)
-        if (excludeProductId && child.key === excludeProductId) {
-          return;
-        }
-        if (product.category === id) {
-          isUsed = true;
-        }
-      });
-      
-      if (isUsed) {
-        return { 
-          success: false, 
-          error: 'Cannot delete category. It is being used by other products.' 
-        };
+  try {
+    // Check if category is used in any products (excluding the current product if provided)
+    const productsSnapshot = await admin.database().ref('products').once('value');
+    let isUsed = false;
+    
+    productsSnapshot.forEach(child => {
+      const product = child.val();
+      // Skip the excluded product (current product being edited)
+      if (excludeProductId && child.key === excludeProductId) {
+        return;
       }
-
-      await admin.database().ref(`categories/${id}`).remove();
-      console.log('Category deleted:', id);
-      return { success: true };
-    } catch (error) {
-      console.error('Delete Category Error:', error);
-      return { success: false, error: error.message };
+      // Check if category exists in the categories array
+      if (product.categories && product.categories.includes(id)) {
+        isUsed = true;
+      }
+    });
+    
+    if (isUsed) {
+      return { 
+        success: false, 
+        error: 'Cannot delete category. It is being used by other products.' 
+      };
     }
+
+    await admin.database().ref(`categories/${id}`).remove();
+    console.log('Category deleted:', id);
+    return { success: true };
+  } catch (error) {
+    console.error('Delete Category Error:', error);
+    return { success: false, error: error.message };
   }
+}
 
   static async getCategory(id) {
     try {
@@ -112,6 +113,29 @@ class CategoryModel {
       return { success: false, error: error.message };
     }
   }
+
+  // Add this static method to CategoryModel.js
+static async validateCategories(categoryIds) {
+  try {
+    if (!categoryIds || categoryIds.length === 0) {
+      return { success: false, error: 'At least one category is required' };
+    }
+    
+    const validCategories = [];
+    for (const categoryId of categoryIds) {
+      const snapshot = await admin.database().ref(`categories/${categoryId}`).once('value');
+      if (!snapshot.exists()) {
+        return { success: false, error: `Category with ID ${categoryId} not found` };
+      }
+      validCategories.push(categoryId);
+    }
+    
+    return { success: true, categories: validCategories };
+  } catch (error) {
+    console.error('Validate Categories Error:', error);
+    return { success: false, error: error.message };
+  }
+}
 }
 
 module.exports = CategoryModel;

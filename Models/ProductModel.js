@@ -2,6 +2,7 @@
 const { admin, storage } = require('../Config/firebaseAdmin');
 
 class ProductModel {
+// Replace the addProduct method in ProductModel.js
 static async addProduct(productData, imageFiles) {
   try {
     let imageUrls = [];
@@ -48,7 +49,7 @@ static async addProduct(productData, imageFiles) {
 
     const productId = admin.database().ref('products').push().key;
 
-      const snapshot = await admin.database().ref('products').once('value');
+    const snapshot = await admin.database().ref('products').once('value');
     let maxOrder = 0;
     snapshot.forEach(child => {
       const val = child.val();
@@ -57,11 +58,24 @@ static async addProduct(productData, imageFiles) {
       }
     });
 
+    // Handle categories - ensure it's an array
+    let categories = productData.categories;
+    if (typeof categories === 'string') {
+      try {
+        categories = JSON.parse(categories);
+      } catch (e) {
+        categories = categories ? [categories] : [];
+      }
+    }
+    if (!categories || !Array.isArray(categories)) {
+      categories = [];
+    }
+
     const product = {
       id: productId,
       name: productData.name,
       description: productData.description,
-      category: productData.category,
+      categories: categories, // Changed from category to categories (array)
       price: parseInt(productData.price) || 0,
       originalPrice: parseInt(productData.originalPrice) || 0,
       stock: parseInt(productData.stock) || 0, 
@@ -85,6 +99,7 @@ static async addProduct(productData, imageFiles) {
 
     await admin.database().ref(`products/${productId}`).set(product);
     console.log('✅ Product added:', productId, 'with', imageUrls.length, 'images');
+    console.log('📂 Categories assigned:', categories);
     
     return { success: true, productId, product };
   } catch (error) {
@@ -92,42 +107,69 @@ static async addProduct(productData, imageFiles) {
     return { success: false, error: error.message };
   }
 }
-  static async getProducts(adminView = false) {
-    try {
-      const snapshot = await admin.database().ref('products').once('value');
-      const products = [];
-     snapshot.forEach(child => {
-        const val = child.val();
-        if (adminView || val.isVisible !== false) {      // ← key safety condition
-          products.push({ ...val, key: child.key ,
-            displayOrder: val.displayOrder || null
-          });
+  
+static async getProducts(adminView = false) {
+  try {
+    const snapshot = await admin.database().ref('products').once('value');
+    const products = [];
+    snapshot.forEach(child => {
+      const val = child.val();
+      if (adminView || val.isVisible !== false) {
+        // ========== FIX: Ensure categories is always an array ==========
+        let categories = val.categories || [];
+        if (typeof categories === 'string') {
+          if (categories.includes(',')) {
+            categories = categories.split(',').map(id => id.trim());
+          } else {
+            categories = categories ? [categories] : [];
+          }
         }
-      });
-      console.log('✅ Fetched', products.length, 'products');
-      return { success: true, products };
-    } catch (error) {
-      console.error('💥 Get Products Error:', error);
-      return { success: false, error: error.message };
-    }
+        // ========== END OF FIX ==========
+        
+        products.push({ 
+          ...val, 
+          key: child.key,
+          categories: Array.isArray(categories) ? categories : [],
+          displayOrder: val.displayOrder || null
+        });
+      }
+    });
+    console.log('✅ Fetched', products.length, 'products');
+    return { success: true, products };
+  } catch (error) {
+    console.error('💥 Get Products Error:', error);
+    return { success: false, error: error.message };
   }
+}
 
   static async getProduct(id) {
-    try {
-      const snapshot = await admin.database().ref(`products/${id}`).once('value');
-      if (!snapshot.exists()) {
-        return { success: false, error: 'Product not found' };
-      }
-      const product = snapshot.val();
-      product.key = id;
-      product.displayOrder = product.displayOrder || null;
-      return { success: true, product };
-    } catch (error) {
-      return { success: false, error: error.message };
+  try {
+    const snapshot = await admin.database().ref(`products/${id}`).once('value');
+    if (!snapshot.exists()) {
+      return { success: false, error: 'Product not found' };
     }
+    const product = snapshot.val();
+    product.key = id;
+    product.displayOrder = product.displayOrder || null;
+    
+    // ========== FIX: Ensure categories is always an array ==========
+    let categories = product.categories || [];
+    if (typeof categories === 'string') {
+      if (categories.includes(',')) {
+        categories = categories.split(',').map(id => id.trim());
+      } else {
+        categories = categories ? [categories] : [];
+      }
+    }
+    product.categories = categories;
+    // ========== END OF FIX ==========
+    
+    return { success: true, product };
+  } catch (error) {
+    return { success: false, error: error.message };
   }
+}
 
-// Update the updateProduct method in ProductModel.js
 
 static async updateProduct(id, productData, imageFiles = []) {
   try {
@@ -213,10 +255,36 @@ static async updateProduct(id, productData, imageFiles = []) {
       }
     }
 
+    // ========== FIX: Parse categories properly ==========
+    let categories = productData.categories;
+    
+    // If categories is a string, parse it
+    if (typeof categories === 'string') {
+      try {
+        // Try to parse as JSON first
+        categories = JSON.parse(categories);
+      } catch (e) {
+        // If JSON parsing fails, check if it's a comma-separated string
+        if (categories.includes(',')) {
+          categories = categories.split(',').map(id => id.trim());
+        } else {
+          categories = categories ? [categories] : [];
+        }
+      }
+    }
+    
+    // Ensure categories is an array
+    if (!categories || !Array.isArray(categories)) {
+      categories = [];
+    }
+    
+    console.log('📂 Saving categories as array:', categories);
+    // ========== END OF FIX ==========
+
     const updates = {
       name: productData.name,
       description: productData.description,
-      category: productData.category,
+      categories: categories, // Now this will always be an array
       price: parseInt(productData.price) || 0,
       originalPrice: parseInt(productData.originalPrice) || 0,
       stock: parseInt(productData.stock) || 0, 
@@ -247,7 +315,8 @@ static async updateProduct(id, productData, imageFiles = []) {
     return { success: false, error: error.message };
   }
 }
-  static async deleteProduct(id) {
+
+static async deleteProduct(id) {
     try {
       await admin.database().ref(`products/${id}`).remove();
       console.log(' Product deleted:', id);
@@ -351,6 +420,28 @@ static async updateProduct(id, productData, imageFiles = []) {
       return { success: false, error: err.message };
     }
   }
+
+  static async getProductsByCategory(categoryId) {
+  try {
+    const snapshot = await admin.database().ref('products').once('value');
+    const products = [];
+    
+    snapshot.forEach(child => {
+      const product = child.val();
+      // Check if the product's categories array contains the categoryId
+      if (product.categories && product.categories.includes(categoryId)) {
+        if (product.isVisible !== false) {
+          products.push({ id: child.key, ...product });
+        }
+      }
+    });
+    
+    return { success: true, products };
+  } catch (error) {
+    console.error('Get Products By Category Error:', error);
+    return { success: false, error: error.message };
+  }
+}
 
 }
 

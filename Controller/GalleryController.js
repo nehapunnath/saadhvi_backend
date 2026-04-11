@@ -1,4 +1,6 @@
 const CarouselModel = require('../Models/GalleryModel');
+const CategoryModel = require('../Models/CategoryModel');
+const { admin } = require('../Config/firebaseAdmin');
 
 class GalleryController {
   static async addSlide(req, res) {
@@ -146,21 +148,40 @@ static async deleteMainGalleryImage(req, res) {
 
 static async addCollection(req, res) {
   try {
-    const collectionData = req.body;
-    const imageFile = req.file;
-
-    if (!imageFile) {
-      return res.status(400).json({ success: false, error: 'Image is required' });
+    const { name, description, items, displayOrder, isActive, categoryId } = req.body;
+    
+    if (!name) {
+      return res.status(400).json({ success: false, error: 'Collection name is required' });
     }
-
-    const result = await CarouselModel.addCollection(collectionData, imageFile);
+    
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'Collection image is required' });
+    }
+    
+    // Validate category if provided
+    if (categoryId) {
+      const categorySnapshot = await admin.database().ref(`categories/${categoryId}`).once('value');
+      if (!categorySnapshot.exists()) {
+        return res.status(400).json({ success: false, error: 'Selected category does not exist' });
+      }
+    }
+    
+    const result = await CarouselModel.addCollection({
+      name,
+      description: description || '',
+      items: items || '',
+      displayOrder: displayOrder ? parseInt(displayOrder) : null,
+      isActive: isActive !== undefined ? isActive : true,
+      categoryId: categoryId || null
+    }, req.file);
+    
     if (result.success) {
-      res.json({ success: true, message: 'Collection added', collectionId: result.collectionId });
+      res.json({ success: true, message: 'Collection added successfully!', collectionId: result.collectionId });
     } else {
       res.status(400).json({ success: false, error: result.error });
     }
   } catch (error) {
-    console.error('Add Collection Controller Error:', error);
+    console.error('Add Collection Error:', error);
     res.status(500).json({ success: false, error: 'Server error' });
   }
 }
@@ -195,16 +216,36 @@ static async getCollection(req, res) {
 static async updateCollection(req, res) {
   try {
     const { id } = req.params;
-    const collectionData = req.body;
-    const imageFile = req.file;
-
-    const result = await CarouselModel.updateCollection(id, collectionData, imageFile);
+    const { name, description, items, displayOrder, isActive, categoryId } = req.body;
+    
+    if (!name) {
+      return res.status(400).json({ success: false, error: 'Collection name is required' });
+    }
+    
+    // Validate category if provided
+    if (categoryId) {
+      const categorySnapshot = await admin.database().ref(`categories/${categoryId}`).once('value');
+      if (!categorySnapshot.exists()) {
+        return res.status(400).json({ success: false, error: 'Selected category does not exist' });
+      }
+    }
+    
+    const result = await CarouselModel.updateCollection(id, {
+      name,
+      description: description || '',
+      items: items || '',
+      displayOrder: displayOrder ? parseInt(displayOrder) : null,
+      isActive: isActive !== undefined ? isActive : true,
+      categoryId: categoryId || null
+    }, req.file);
+    
     if (result.success) {
-      res.json({ success: true, message: 'Collection updated' });
+      res.json({ success: true, message: 'Collection updated successfully!' });
     } else {
       res.status(400).json({ success: false, error: result.error });
     }
   } catch (error) {
+    console.error('Update Collection Error:', error);
     res.status(500).json({ success: false, error: 'Server error' });
   }
 }
@@ -237,17 +278,42 @@ static async reorderCollections(req, res) {
   }
 }
 
+
+// functions/src/Controller/GalleryController.js
+
 static async getPublicCollections(req, res) {
   try {
-    const result = await CarouselModel.getCollections();
+    const result = await CarouselModel.getCollections(true);
     if (result.success) {
-      // Filter only active collections for public access
-      const activeCollections = result.collections.filter(c => c.isActive !== false);
-      res.json({ success: true, collections: activeCollections });
+      const collectionsWithCategoryNames = await Promise.all(
+        result.collections.map(async (collection) => {
+          if (collection.categoryId && collection.categoryId !== 'undefined') {
+            const categoryResult = await CategoryModel.getCategory(collection.categoryId);
+            if (categoryResult.success) {
+              return {
+                ...collection,
+                categoryName: categoryResult.category.name,
+                categoryId: collection.categoryId // Make sure categoryId is preserved
+              };
+            }
+          }
+          return {
+            ...collection,
+            categoryName: null,
+            categoryId: null
+          };
+        })
+      );
+      
+      res.json({ 
+        success: true, 
+        collections: collectionsWithCategoryNames
+      });
     } else {
       res.status(400).json({ success: false, error: result.error });
     }
   } catch (error) {
+    console.error('Get Public Collections Error:', error);
     res.status(500).json({ success: false, error: 'Server error' });
   }
 }

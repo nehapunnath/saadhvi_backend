@@ -9,6 +9,7 @@ const OrderController = require('../Controller/OrderController');
 const CarouselController = require('../Controller/GalleryController');
 const CategoryController = require('../Controller/CategoryController');
 const BadgeController = require('../Controller/BadgeController');
+const OtpController = require('../Controller/OtpController');
 
 router.post('/set-admin', async (req, res) => {
   const { email } = req.body;
@@ -25,6 +26,12 @@ router.post('/set-admin', async (req, res) => {
 
 router.post('/login', AuthController.login);
 router.post('/user/register', AuthController.registerUser);
+
+router.post('/auth/send-otp', OtpController.sendOtp);
+router.post('/auth/verify-otp', OtpController.verifyOtpAndLogin);
+
+// Link phone to existing account (authenticated users)
+router.post('/auth/link-phone', verifyUser, OtpController.linkPhone);
 
 router.post('/admin/products', verifyAdmin, upload.array('images', 5), ProductController.addProduct);
 router.get('/admin/products', verifyAdmin, ProductController.getProducts);
@@ -57,15 +64,16 @@ router.get('/products/:id', ProductController.getPublicProduct);
 
 router.get('/products/search', ProductController.searchProducts);
 
+router.get('/cart', verifyUser, ProductController.getCart);
+router.post('/cart', verifyUser, ProductController.addToCart);
+router.put('/cart/:id', verifyUser, ProductController.updateCartItem);
+router.delete('/cart/:id', verifyUser, ProductController.removeFromCart);
 
 router.get('/wishlist', verifyUser, ProductController.getWishlist); 
 router.post('/wishlist', verifyUser, ProductController.addToWishlist); 
 router.delete('/wishlist/:id', verifyUser, ProductController.removeFromWishlist); 
 
-router.get('/cart', verifyUser, ProductController.getCart);
-router.post('/cart', verifyUser, ProductController.addToCart);
-router.put('/cart/:id', verifyUser, ProductController.updateCartItem);
-router.delete('/cart/:id', verifyUser, ProductController.removeFromCart);
+
 
 router.post('/checkout', verifyUser, OrderController.checkout);
 router.get('/admin/orders/:orderId', verifyAdmin, OrderController.getOrderById);

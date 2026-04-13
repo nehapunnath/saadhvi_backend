@@ -1,6 +1,7 @@
 const { admin } = require('../Config/firebaseAdmin');
 const { initializeApp } = require('firebase/app');
 const { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } = require('firebase/auth');
+const OtpModel = require('./OtpModel');
 
 // 🔥 CLIENT CONFIG (for password verification)
 const firebaseConfig = {
@@ -14,6 +15,119 @@ const clientApp = initializeApp(firebaseConfig);
 const clientAuth = getAuth(clientApp);
 
 class AuthModel {
+
+    static async sendPhoneOtp(phoneNumber) {
+    return await OtpModel.sendOtp(phoneNumber);
+  }
+
+  // Verify OTP and authenticate/create user
+  // Models/AuthModel.js - Fix the authenticateWithPhone method
+
+static async authenticateWithPhone(phoneNumber, otp, name = null) {
+  try {
+    // 1. Verify OTP
+    const otpResult = await OtpModel.verifyOtp(phoneNumber, otp);
+    if (!otpResult.success) {
+      return otpResult;
+    }
+    
+    const cleanedPhone = otpResult.phoneNumber;
+    
+    // 2. Check if user exists with this phone number
+    let userRecord;
+    try {
+      // Try to find user by phone number
+      userRecord = await admin.auth().getUserByPhoneNumber(`+${cleanedPhone}`);
+      console.log(`✅ Existing user found with phone: ${cleanedPhone}`);
+    } catch (error) {
+      // User doesn't exist, create new user
+      if (error.code === 'auth/user-not-found') {
+        // Create user with ONLY phone number - NO email field
+        const userData = {
+          phoneNumber: `+${cleanedPhone}`,
+          displayName: name || `User_${cleanedPhone.slice(-4)}`
+          // ⚠️ Do NOT include email: null - this causes the error!
+        };
+        
+        userRecord = await admin.auth().createUser(userData);
+        console.log(`✅ New user created with phone: ${cleanedPhone}`);
+        
+        // Store additional data in Realtime Database
+        await admin.database().ref('users/' + userRecord.uid).set({
+          phoneNumber: cleanedPhone,
+          name: name || `User_${cleanedPhone.slice(-4)}`,
+          createdAt: new Date().toISOString(),
+          role: 'user',
+          authMethod: 'phone'
+        });
+      } else {
+        throw error;
+      }
+    }
+    
+    // 3. Generate custom token
+    const customToken = await admin.auth().createCustomToken(userRecord.uid);
+    
+    // 4. Clear OTP from store
+    OtpModel.clearOtp(cleanedPhone);
+    
+    // 5. Get user data
+    const userSnapshot = await admin.database().ref('users/' + userRecord.uid).once('value');
+    const userData = userSnapshot.val() || {};
+    
+    console.log(`✅ Phone authentication successful for ${cleanedPhone}`);
+    
+    return {
+      success: true,
+      token: customToken,
+      uid: userRecord.uid,
+      phoneNumber: cleanedPhone,
+      name: userData.name || userRecord.displayName,
+      isNewUser: !userData.createdAt // Flag if new user
+    };
+    
+  } catch (error) {
+    console.error("❌ Phone Auth Error:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+  // Link phone to existing email account
+  // Models/AuthModel.js - Fix linkPhoneToAccount method
+
+static async linkPhoneToAccount(uid, phoneNumber, otp) {
+  try {
+    // Verify OTP
+    const otpResult = await OtpModel.verifyOtp(phoneNumber, otp);
+    if (!otpResult.success) {
+      return otpResult;
+    }
+    
+    const cleanedPhone = otpResult.phoneNumber;
+    
+    // Update user with phone number
+    await admin.auth().updateUser(uid, {
+      phoneNumber: `+${cleanedPhone}`
+      // Don't include email field here either
+    });
+    
+    // Update database
+    await admin.database().ref('users/' + uid).update({
+      phoneNumber: cleanedPhone,
+      phoneVerified: true,
+      phoneLinkedAt: new Date().toISOString()
+    });
+    
+    OtpModel.clearOtp(cleanedPhone);
+    
+    return { success: true, message: 'Phone number linked successfully' };
+    
+  } catch (error) {
+    console.error("❌ Link Phone Error:", error);
+    return { success: false, error: error.message };
+  }
+}
+
   static async verifyToken(idToken) {
     try {
       const decodedToken = await admin.auth().verifyIdToken(idToken, true); // checkRevoked: true
@@ -160,6 +274,8 @@ class AuthModel {
       return { success: false, error: error.message };
     }
   }
+
+
 }
 
 module.exports = AuthModel;
